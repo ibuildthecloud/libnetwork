@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/docker/libkv/store"
-	"github.com/docker/libkv/store/boltdb"
+	jsonstore "github.com/docker/libkv/store/json"
 	"github.com/docker/libnetwork/bitseq"
 	"github.com/docker/libnetwork/datastore"
 	"github.com/docker/libnetwork/ipamapi"
@@ -28,7 +28,7 @@ const (
 )
 
 func init() {
-	boltdb.Register()
+	jsonstore.Register()
 }
 
 // OptionBoltdbWithRandomDBFile function returns a random dir for local store backend

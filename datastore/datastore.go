@@ -137,8 +137,8 @@ func makeDefaultScopes() map[string]*ScopeCfg {
 	def := make(map[string]*ScopeCfg)
 	def[LocalScope] = &ScopeCfg{
 		Client: ScopeClientCfg{
-			Provider: string(store.BOLTDB),
-			Address:  defaultPrefix + "/local-kv.db",
+			Provider: string(store.JSON),
+			Address:  defaultPrefix + "/local-kv.json",
 			Config: &store.Config{
 				Bucket:            "libnetwork",
 				ConnectionTimeout: time.Minute,
@@ -155,11 +155,11 @@ var rootChain = defaultRootChain
 // DefaultScopes returns a map of default scopes and its config for clients to use.
 func DefaultScopes(dataDir string) map[string]*ScopeCfg {
 	if dataDir != "" {
-		defaultScopes[LocalScope].Client.Address = dataDir + "/network/files/local-kv.db"
+		defaultScopes[LocalScope].Client.Address = dataDir + "/network/files/local-kv.json"
 		return defaultScopes
 	}
 
-	defaultScopes[LocalScope].Client.Address = defaultPrefix + "/local-kv.db"
+	defaultScopes[LocalScope].Client.Address = defaultPrefix + "/local-kv.json"
 	return defaultScopes
 }
 
@@ -209,7 +209,7 @@ func newClient(scope string, kv string, addr string, config *store.Config, cache
 
 	var addrs []string
 
-	if kv == string(store.BOLTDB) {
+	if kv == string(store.JSON) {
 		// Parse file path
 		addrs = strings.Split(addr, ",")
 	} else {

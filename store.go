@@ -4,19 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/libkv/store/boltdb"
-	"github.com/docker/libkv/store/consul"
-	"github.com/docker/libkv/store/etcd"
-	"github.com/docker/libkv/store/zookeeper"
+	"github.com/docker/libkv/store/json"
 	"github.com/docker/libnetwork/datastore"
 	"github.com/sirupsen/logrus"
 )
 
 func registerKVStores() {
-	consul.Register()
-	zookeeper.Register()
-	etcd.Register()
-	boltdb.Register()
+	json.Register()
 }
 
 func (c *controller) initScopedStore(scope string, scfg *datastore.ScopeCfg) error {

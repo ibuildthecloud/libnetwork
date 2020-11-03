@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/docker/docker/pkg/discovery"
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/docker/libkv/store"
@@ -26,7 +25,6 @@ const (
 // Config encapsulates configurations of various Libnetwork components
 type Config struct {
 	Daemon          DaemonCfg
-	Cluster         ClusterCfg
 	Scopes          map[string]*datastore.ScopeCfg
 	ActiveSandboxes map[string]interface{}
 	PluginGetter    plugingetter.PluginGetter
@@ -45,14 +43,6 @@ type DaemonCfg struct {
 	ClusterProvider        cluster.Provider
 	NetworkControlPlaneMTU int
 	DefaultAddressPool     []*ipamutils.NetworkToSplit
-}
-
-// ClusterCfg represents cluster configuration
-type ClusterCfg struct {
-	Watcher   discovery.Watcher
-	Address   string
-	Discovery string
-	Heartbeat uint64
 }
 
 // LoadDefaultScopes loads default scope configs for scopes which
@@ -193,20 +183,6 @@ func OptionKVOpts(opts map[string]string) Option {
 		} else {
 			logrus.Info("Option Initializing KV without TLS")
 		}
-	}
-}
-
-// OptionDiscoveryWatcher function returns an option setter for discovery watcher
-func OptionDiscoveryWatcher(watcher discovery.Watcher) Option {
-	return func(c *Config) {
-		c.Cluster.Watcher = watcher
-	}
-}
-
-// OptionDiscoveryAddress function returns an option setter for self discovery address
-func OptionDiscoveryAddress(address string) Option {
-	return func(c *Config) {
-		c.Cluster.Address = address
 	}
 }
 

@@ -224,19 +224,6 @@ func (c *controller) agentSetup(clusterProvider cluster.Provider) error {
 
 	logrus.Infof("Initializing Libnetwork Agent Listen-Addr=%s Local-addr=%s Adv-addr=%s Data-addr=%s Remote-addr-list=%v MTU=%d",
 		listenAddr, bindAddr, advAddr, dataAddr, remoteAddrList, c.Config().Daemon.NetworkControlPlaneMTU)
-	if advAddr != "" && agent == nil {
-		if err := c.agentInit(listenAddr, bindAddr, advAddr, dataAddr); err != nil {
-			logrus.Errorf("error in agentInit: %v", err)
-			return err
-		}
-		c.drvRegistry.WalkDrivers(func(name string, driver driverapi.Driver, capability driverapi.Capability) bool {
-			if capability.ConnectivityScope == datastore.GlobalScope {
-				c.agentDriverNotify(driver)
-			}
-			return false
-		})
-	}
-
 	if len(remoteAddrList) > 0 {
 		if err := c.agentJoin(remoteAddrList); err != nil {
 			logrus.Errorf("Error in joining gossip cluster : %v(join will be retried in background)", err)
@@ -281,71 +268,6 @@ func (c *controller) getPrimaryKeyTag(subsys string) ([]byte, uint64, error) {
 		}
 	}
 	return keys[1].Key, keys[1].LamportTime, nil
-}
-
-func (c *controller) agentInit(listenAddr, bindAddrOrInterface, advertiseAddr, dataPathAddr string) error {
-	bindAddr, err := resolveAddr(bindAddrOrInterface)
-	if err != nil {
-		return err
-	}
-
-	keys, _ := c.getKeys(subsysGossip)
-
-	netDBConf := networkdb.DefaultConfig()
-	netDBConf.BindAddr = listenAddr
-	netDBConf.AdvertiseAddr = advertiseAddr
-	netDBConf.Keys = keys
-	if c.Config().Daemon.NetworkControlPlaneMTU != 0 {
-		// Consider the MTU remove the IP hdr (IPv4 or IPv6) and the TCP/UDP hdr.
-		// To be on the safe side let's cut 100 bytes
-		netDBConf.PacketBufferSize = (c.Config().Daemon.NetworkControlPlaneMTU - 100)
-		logrus.Debugf("Control plane MTU: %d will initialize NetworkDB with: %d",
-			c.Config().Daemon.NetworkControlPlaneMTU, netDBConf.PacketBufferSize)
-	}
-	nDB, err := networkdb.New(netDBConf)
-	if err != nil {
-		return err
-	}
-
-	// Register the diagnostic handlers
-	c.DiagnosticServer.RegisterHandler(nDB, networkdb.NetDbPaths2Func)
-
-	var cancelList []func()
-	ch, cancel := nDB.Watch(libnetworkEPTable, "", "")
-	cancelList = append(cancelList, cancel)
-	nodeCh, cancel := nDB.Watch(networkdb.NodeTable, "", "")
-	cancelList = append(cancelList, cancel)
-
-	c.Lock()
-	c.agent = &agent{
-		networkDB:         nDB,
-		bindAddr:          bindAddr,
-		advertiseAddr:     advertiseAddr,
-		dataPathAddr:      dataPathAddr,
-		coreCancelFuncs:   cancelList,
-		driverCancelFuncs: make(map[string][]func()),
-	}
-	c.Unlock()
-
-	go c.handleTableEvents(ch, c.handleEpTableEvent)
-	go c.handleTableEvents(nodeCh, c.handleNodeTableEvent)
-
-	drvEnc := discoverapi.DriverEncryptionConfig{}
-	keys, tags := c.getKeys(subsysIPSec)
-	drvEnc.Keys = keys
-	drvEnc.Tags = tags
-
-	c.drvRegistry.WalkDrivers(func(name string, driver driverapi.Driver, capability driverapi.Capability) bool {
-		err := driver.DiscoverNew(discoverapi.EncryptionKeysConfig, drvEnc)
-		if err != nil {
-			logrus.Warnf("Failed to set datapath keys in driver %s: %v", name, err)
-		}
-		return false
-	})
-
-	c.WalkNetworks(joinCluster)
-
-	return nil
 }
 
 func (c *controller) agentJoin(remoteAddrList []string) error {
@@ -873,13 +795,11 @@ func (n *network) handleDriverTableEvent(ev events.Event) {
 func (c *controller) handleNodeTableEvent(ev events.Event) {
 	var (
 		value    []byte
-		isAdd    bool
 		nodeAddr networkdb.NodeAddr
 	)
 	switch event := ev.(type) {
 	case networkdb.CreateEvent:
 		value = event.Value
-		isAdd = true
 	case networkdb.DeleteEvent:
 		value = event.Value
 	case networkdb.UpdateEvent:
@@ -891,7 +811,6 @@ func (c *controller) handleNodeTableEvent(ev events.Event) {
 		logrus.Errorf("Error unmarshalling node table event %v", err)
 		return
 	}
-	c.processNodeDiscovery([]net.IP{nodeAddr.Addr}, isAdd)
 
 }
 

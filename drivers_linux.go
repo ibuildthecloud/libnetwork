@@ -6,7 +6,6 @@ import (
 	"github.com/docker/libnetwork/drivers/ipvlan"
 	"github.com/docker/libnetwork/drivers/macvlan"
 	"github.com/docker/libnetwork/drivers/null"
-	"github.com/docker/libnetwork/drivers/overlay"
 	"github.com/docker/libnetwork/drivers/remote"
 )
 
@@ -17,7 +16,6 @@ func getInitializers(experimental bool) []initializer {
 		{ipvlan.Init, "ipvlan"},
 		{macvlan.Init, "macvlan"},
 		{null.Init, "null"},
-		{overlay.Init, "overlay"},
 		{remote.Init, "remote"},
 	}
 	return in

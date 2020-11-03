@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/libkv/store"
-	"github.com/docker/libkv/store/boltdb"
+	"github.com/docker/libkv/store/json"
 	"github.com/docker/libnetwork/datastore"
 	_ "github.com/docker/libnetwork/testutils"
 )
@@ -18,7 +18,7 @@ const (
 )
 
 func init() {
-	boltdb.Register()
+	json.Register()
 }
 
 func randomLocalStore() (datastore.DataStore, error) {
